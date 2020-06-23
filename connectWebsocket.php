@@ -1,10 +1,18 @@
+<script src="http://socketo.me/vendor/autobahnjs/autobahn/autobahn.js"></script>
 <script>
-    let conn = new WebSocket('ws://localhost:8080');
-    conn.onopen = function(e) {
-        console.log("Connection established!");
-    };
-
-    conn.onmessage = function(e) {
-        $("#notification").append(e.data);
-    };
+$(function() {
+    ab.debug(true,true);
+    var conn = new ab.Session('ws://localhost:8082',
+        function() {
+            conn.subscribe('fork', function(topic, data) {
+                let mess = "<p>Your fork is done and this is your new fork repo: <a target='blank' href=" + data + ">URL</a></p>";
+                $("#notification").append(mess)
+            });
+        },
+        function() {
+            console.warn('WebSocket connection closed');
+        },
+        {'skipSubprotocolCheck': true}
+    );
+})
 </script>

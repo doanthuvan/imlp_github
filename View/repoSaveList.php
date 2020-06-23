@@ -3,7 +3,6 @@ include_once('header.php');
 ?>
 <html>
 <head>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <style>
     table, th, td {
         border: 1px solid black;
@@ -59,12 +58,7 @@ include_once('header.php');
             dataType: 'html',
             data: data
         }).done(function(response) {
-            if(response) {
-                let mess = "<p>Your fork is done and this is your new fork repo: <a target='blank' href=" + response + ">URL</a></p>";
-                conn.send(mess)
-                $("#notification").append(mess)
-                table.rows[row.getAttribute("data-index")].cells[4].outerHTML = "<a target='blank' href='" + response + "'>link</a>";
-            }
+           alert("Fork")
         }).fail(function() {
             alert("Not fork")
         });

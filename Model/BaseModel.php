@@ -1,4 +1,6 @@
 <?php
+namespace Model;
+include_once('env.php');
 class BaseModel
 {
     public $conn;

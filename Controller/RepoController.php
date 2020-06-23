@@ -1,5 +1,6 @@
 <?php
 include_once('Model/Repo.php');
+use Model\Repo;
 class RepoController
 {
     public function __construct()
@@ -20,7 +21,16 @@ class RepoController
         }
         if($_GET['page'] == 'reposSave') {
             if(isset($_POST['action'])) {
-                echo $this->fork($_POST['idRepo'], $_POST['nameRepo'], $_POST['owner']);
+                $idUser = $_SESSION['idUser'];
+                $entryData = array(
+                    'idRepo' => $_POST['idRepo'],
+                    'nameRepo' =>  $_POST['nameRepo'],
+                    'owner' => $_POST['owner']
+                );
+                $context    = new ZMQContext();
+                $socket     = $context->getSocket(ZMQ::SOCKET_PUSH,'my pusher');
+                $socket->connect('tcp://localhost:4545');
+                $socket->send(json_encode($entryData));
                 exit;
             }
             else {
@@ -35,12 +45,6 @@ class RepoController
     {
         $repo = new Repo();
         return $repo->store($id, $name, $clone_url, $owner);
-    }
-    
-    public function fork($idRepo, $nameRepo, $owner)
-    {
-        $repo = new Repo();
-        return $repo->fork($idRepo, $nameRepo, $owner);
     }
 }
 $repoController = new RepoController();

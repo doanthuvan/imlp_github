@@ -1,5 +1,7 @@
 <?php
+namespace Model;
 include_once('BaseModel.php');
+
 class Repo extends BaseModel
 {
     private $table = 'repos';
@@ -46,7 +48,7 @@ class Repo extends BaseModel
         $idUser = $_SESSION['idUser'];
         $sql = "SELECT * FROM forks where idRepo = $idRepo and idUser = $idUser";
         $row_count = mysqli_num_rows(mysqli_query($this->conn, $sql));
-        if($row_count > 0) return;
+        if($row_count > 0) return false;
         $curl = curl_init();
         $options =array(
             CURLOPT_RETURNTRANSFER => 1,
@@ -69,6 +71,6 @@ class Repo extends BaseModel
             }
             return false;
         }
-        
+        return false;
     }
 }
