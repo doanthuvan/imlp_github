@@ -15,7 +15,7 @@ class UdpTransportExecutorTest extends TestCase
     /**
      * @dataProvider provideDefaultPortProvider
      * @param string $input
-     * @param string $expected
+     * @param strings $expected
      */
     public function testCtorShouldAcceptNameserverAddresses($input, $expected)
     {
@@ -33,30 +33,12 @@ class UdpTransportExecutorTest extends TestCase
     public static function provideDefaultPortProvider()
     {
         return array(
-            array(
-                '8.8.8.8',
-                'udp://8.8.8.8:53'
-            ),
-            array(
-                '1.2.3.4:5',
-                'udp://1.2.3.4:5'
-            ),
-            array(
-                'udp://1.2.3.4',
-                'udp://1.2.3.4:53'
-            ),
-            array(
-                'udp://1.2.3.4:53',
-                'udp://1.2.3.4:53'
-            ),
-            array(
-                '::1',
-                'udp://[::1]:53'
-            ),
-            array(
-                '[::1]:53',
-                'udp://[::1]:53'
-            )
+            array('8.8.8.8',        'udp://8.8.8.8:53'),
+            array('1.2.3.4:5',      'udp://1.2.3.4:5'),
+            array('localhost',      'udp://localhost:53'),
+            array('localhost:1234', 'udp://localhost:1234'),
+            array('::1',            'udp://[::1]:53'),
+            array('[::1]:53',       'udp://[::1]:53')
         );
     }
 
@@ -70,26 +52,6 @@ class UdpTransportExecutorTest extends TestCase
         new UdpTransportExecutor('///', $loop);
     }
 
-    /**
-     * @expectedException InvalidArgumentException
-     */
-    public function testCtorShouldThrowWhenNameserverAddressContainsHostname()
-    {
-        $loop = $this->getMockBuilder('React\EventLoop\LoopInterface')->getMock();
-
-        new UdpTransportExecutor('localhost', $loop);
-    }
-
-    /**
-     * @expectedException InvalidArgumentException
-     */
-    public function testCtorShouldThrowWhenNameserverSchemeIsInvalid()
-    {
-        $loop = $this->getMockBuilder('React\EventLoop\LoopInterface')->getMock();
-
-        new UdpTransportExecutor('tcp://1.2.3.4', $loop);
-    }
-
     public function testQueryRejectsIfMessageExceedsUdpSize()
     {
         $loop = $this->getMockBuilder('React\EventLoop\LoopInterface')->getMock();
@@ -101,14 +63,7 @@ class UdpTransportExecutorTest extends TestCase
         $promise = $executor->query($query);
 
         $this->assertInstanceOf('React\Promise\PromiseInterface', $promise);
-
-        $exception = null;
-        $promise->then(null, function ($reason) use (&$exception) {
-            $exception = $reason;
-        });
-
-        $this->setExpectedException('RuntimeException', '', defined('SOCKET_EMSGSIZE') ? SOCKET_EMSGSIZE : 90);
-        throw $exception;
+        $promise->then(null, $this->expectCallableOnce());
     }
 
     public function testQueryRejectsIfServerConnectionFails()
@@ -169,7 +124,7 @@ class UdpTransportExecutorTest extends TestCase
         $this->assertTrue($wait);
     }
 
-    public function testQueryKeepsPendingIfServerSendsInvalidMessage()
+    public function testQueryKeepsPendingIfServerSendInvalidMessage()
     {
         $loop = Factory::create();
 
@@ -197,7 +152,7 @@ class UdpTransportExecutorTest extends TestCase
         $this->assertTrue($wait);
     }
 
-    public function testQueryKeepsPendingIfServerSendsInvalidId()
+    public function testQueryKeepsPendingIfServerSendInvalidId()
     {
         $parser = new Parser();
         $dumper = new BinaryDumper();
@@ -254,10 +209,22 @@ class UdpTransportExecutorTest extends TestCase
 
         $query = new Query('google.com', Message::TYPE_A, Message::CLASS_IN);
 
-        $promise = $executor->query($query);
+        $wait = true;
+        $promise = $executor->query($query)->then(
+            null,
+            function ($e) use (&$wait) {
+                $wait = false;
+                throw $e;
+            }
+        );
 
-        $this->setExpectedException('RuntimeException', '', defined('SOCKET_EMSGSIZE') ? SOCKET_EMSGSIZE : 90);
-        \Clue\React\Block\await($promise, $loop, 0.1);
+        // run loop for short period to ensure we detect connection ICMP rejection error
+        \Clue\React\Block\sleep(0.01, $loop);
+        if ($wait) {
+            \Clue\React\Block\sleep(0.2, $loop);
+        }
+
+        $this->assertFalse($wait);
     }
 
     public function testQueryResolvesIfServerSendsValidResponse()

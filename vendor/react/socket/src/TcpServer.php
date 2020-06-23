@@ -163,7 +163,7 @@ final class TcpServer extends EventEmitter implements ServerInterface
         if (false === $this->master) {
             throw new \RuntimeException('Failed to listen on "' . $uri . '": ' . $errstr, $errno);
         }
-        \stream_set_blocking($this->master, false);
+        \stream_set_blocking($this->master, 0);
 
         $this->resume();
     }

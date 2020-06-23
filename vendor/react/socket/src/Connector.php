@@ -2,10 +2,12 @@
 
 namespace React\Socket;
 
-use React\Dns\Config\Config as DnsConfig;
-use React\Dns\Resolver\Factory as DnsFactory;
-use React\Dns\Resolver\ResolverInterface;
+use React\Dns\Config\Config;
+use React\Dns\Resolver\Factory;
+use React\Dns\Resolver\Resolver;
 use React\EventLoop\LoopInterface;
+use React\Promise;
+use RuntimeException;
 
 /**
  * The `Connector` class is the main class in this package that implements the
@@ -36,7 +38,6 @@ final class Connector implements ConnectorInterface
 
             'dns' => true,
             'timeout' => true,
-            'happy_eyeballs' => true,
         );
 
         if ($options['timeout'] === true) {
@@ -53,29 +54,25 @@ final class Connector implements ConnectorInterface
         }
 
         if ($options['dns'] !== false) {
-            if ($options['dns'] instanceof ResolverInterface) {
+            if ($options['dns'] instanceof Resolver) {
                 $resolver = $options['dns'];
             } else {
                 if ($options['dns'] !== true) {
                     $server = $options['dns'];
                 } else {
                     // try to load nameservers from system config or default to Google's public DNS
-                    $config = DnsConfig::loadSystemConfigBlocking();
+                    $config = Config::loadSystemConfigBlocking();
                     $server = $config->nameservers ? \reset($config->nameservers) : '8.8.8.8';
                 }
 
-                $factory = new DnsFactory();
-                $resolver = $factory->createCached(
+                $factory = new Factory();
+                $resolver = $factory->create(
                     $server,
                     $loop
                 );
             }
 
-            if ($options['happy_eyeballs'] === true) {
-                $tcp = new HappyEyeBallsConnector($loop, $tcp, $resolver);
-            } else {
-                $tcp = new DnsConnector($tcp, $resolver);
-            }
+            $tcp = new DnsConnector($tcp, $resolver);
         }
 
         if ($options['tcp'] !== false) {
@@ -128,7 +125,7 @@ final class Connector implements ConnectorInterface
         }
 
         if (!isset($this->connectors[$scheme])) {
-            return \React\Promise\reject(new \RuntimeException(
+            return Promise\reject(new \RuntimeException(
                 'No connector available for URI scheme "' . $scheme . '"'
             ));
         }

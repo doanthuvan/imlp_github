@@ -118,6 +118,13 @@ class ComposerStaticInit61005d5504d041a9da38977b5132a694
     );
 
     public static $prefixesPsr0 = array (
+        'R' => 
+        array (
+            'React\\ZMQ' => 
+            array (
+                0 => __DIR__ . '/..' . '/react/zmq/src',
+            ),
+        ),
         'E' => 
         array (
             'Evenement' => 

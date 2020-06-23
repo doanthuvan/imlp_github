@@ -98,13 +98,13 @@ final class UdpTransportExecutor implements ExecutorInterface
      */
     public function __construct($nameserver, LoopInterface $loop)
     {
-        if (\strpos($nameserver, '[') === false && \substr_count($nameserver, ':') >= 2 && \strpos($nameserver, '://') === false) {
+        if (strpos($nameserver, '[') === false && substr_count($nameserver, ':') >= 2) {
             // several colons, but not enclosed in square brackets => enclose IPv6 address in square brackets
             $nameserver = '[' . $nameserver . ']';
         }
 
-        $parts = \parse_url((\strpos($nameserver, '://') === false ? 'udp://' : '') . $nameserver);
-        if (!isset($parts['scheme'], $parts['host']) || $parts['scheme'] !== 'udp' || !\filter_var(\trim($parts['host'], '[]'), \FILTER_VALIDATE_IP)) {
+        $parts = parse_url('udp://' . $nameserver);
+        if (!isset($parts['scheme'], $parts['host']) || $parts['scheme'] !== 'udp') {
             throw new \InvalidArgumentException('Invalid nameserver address given');
         }
 
@@ -121,8 +121,7 @@ final class UdpTransportExecutor implements ExecutorInterface
         $queryData = $this->dumper->toBinary($request);
         if (isset($queryData[512])) {
             return \React\Promise\reject(new \RuntimeException(
-                'DNS query for ' . $query->name . ' failed: Query too large for UDP transport',
-                \defined('SOCKET_EMSGSIZE') ? \SOCKET_EMSGSIZE : 90
+                'DNS query for ' . $query->name . ' failed: Query too large for UDP transport'
             ));
         }
 
@@ -173,10 +172,7 @@ final class UdpTransportExecutor implements ExecutorInterface
             \fclose($socket);
 
             if ($response->tc) {
-                $deferred->reject(new \RuntimeException(
-                    'DNS query for ' . $query->name . ' failed: The server returned a truncated result for a UDP query',
-                    \defined('SOCKET_EMSGSIZE') ? \SOCKET_EMSGSIZE : 90
-                ));
+                $deferred->reject(new \RuntimeException('DNS query for ' . $query->name . ' failed: The server returned a truncated result for a UDP query, but retrying via TCP is currently not supported'));
                 return;
             }
 

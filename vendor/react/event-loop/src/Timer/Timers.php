@@ -2,33 +2,24 @@
 
 namespace React\EventLoop\Timer;
 
-use React\EventLoop\TimerInterface;
+use SplObjectStorage;
+use SplPriorityQueue;
 
-/**
- * A scheduler implementation that can hold multiple timer instances
- *
- * This class should only be used internally, see TimerInterface instead.
- *
- * @see TimerInterface
- * @internal
- */
-final class Timers
+class Timers
 {
     private $time;
-    private $timers = array();
-    private $schedule = array();
-    private $sorted = true;
-    private $useHighResolution;
+    private $timers;
+    private $scheduler;
 
     public function __construct()
     {
-        // prefer high-resolution timer, available as of PHP 7.3+
-        $this->useHighResolution = \function_exists('hrtime');
+        $this->timers = new SplObjectStorage();
+        $this->scheduler = new SplPriorityQueue();
     }
 
     public function updateTime()
     {
-        return $this->time = $this->useHighResolution ? \hrtime(true) * 1e-9 : \microtime(true);
+        return $this->time = microtime(true);
     }
 
     public function getTime()
@@ -38,69 +29,71 @@ final class Timers
 
     public function add(TimerInterface $timer)
     {
-        $id = \spl_object_hash($timer);
-        $this->timers[$id] = $timer;
-        $this->schedule[$id] = $timer->getInterval() + $this->updateTime();
-        $this->sorted = false;
+        $interval = $timer->getInterval();
+        $scheduledAt = $interval + microtime(true);
+
+        $this->timers->attach($timer, $scheduledAt);
+        $this->scheduler->insert($timer, -$scheduledAt);
     }
 
     public function contains(TimerInterface $timer)
     {
-        return isset($this->timers[\spl_object_hash($timer)]);
+        return $this->timers->contains($timer);
     }
 
     public function cancel(TimerInterface $timer)
     {
-        $id = \spl_object_hash($timer);
-        unset($this->timers[$id], $this->schedule[$id]);
+        $this->timers->detach($timer);
     }
 
     public function getFirst()
     {
-        // ensure timers are sorted to simply accessing next (first) one
-        if (!$this->sorted) {
-            $this->sorted = true;
-            \asort($this->schedule);
+        while ($this->scheduler->count()) {
+            $timer = $this->scheduler->top();
+
+            if ($this->timers->contains($timer)) {
+                return $this->timers[$timer];
+            }
+
+            $this->scheduler->extract();
         }
 
-        return \reset($this->schedule);
+        return null;
     }
 
     public function isEmpty()
     {
-        return \count($this->timers) === 0;
+        return count($this->timers) === 0;
     }
 
     public function tick()
     {
-        // ensure timers are sorted so we can execute in order
-        if (!$this->sorted) {
-            $this->sorted = true;
-            \asort($this->schedule);
-        }
-
         $time = $this->updateTime();
+        $timers = $this->timers;
+        $scheduler = $this->scheduler;
 
-        foreach ($this->schedule as $id => $scheduled) {
-            // schedule is ordered, so loop until first timer that is not scheduled for execution now
-            if ($scheduled >= $time) {
-                break;
-            }
+        while (!$scheduler->isEmpty()) {
+            $timer = $scheduler->top();
 
-            // skip any timers that are removed while we process the current schedule
-            if (!isset($this->schedule[$id]) || $this->schedule[$id] !== $scheduled) {
+            if (!isset($timers[$timer])) {
+                $scheduler->extract();
+                $timers->detach($timer);
+
                 continue;
             }
 
-            $timer = $this->timers[$id];
-            \call_user_func($timer->getCallback(), $timer);
+            if ($timers[$timer] >= $time) {
+                break;
+            }
 
-            // re-schedule if this is a periodic timer and it has not been cancelled explicitly already
-            if ($timer->isPeriodic() && isset($this->timers[$id])) {
-                $this->schedule[$id] = $timer->getInterval() + $time;
-                $this->sorted = false;
+            $scheduler->extract();
+            call_user_func($timer->getCallback(), $timer);
+
+            if ($timer->isPeriodic() && isset($timers[$timer])) {
+                $timers[$timer] = $scheduledAt = $timer->getInterval() + $time;
+                $scheduler->insert($timer, -$scheduledAt);
             } else {
-                unset($this->timers[$id], $this->schedule[$id]);
+                $timers->detach($timer);
             }
         }
     }

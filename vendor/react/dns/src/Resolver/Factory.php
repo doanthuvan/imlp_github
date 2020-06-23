@@ -10,8 +10,6 @@ use React\Dns\Query\CoopExecutor;
 use React\Dns\Query\ExecutorInterface;
 use React\Dns\Query\HostsFileExecutor;
 use React\Dns\Query\RetryExecutor;
-use React\Dns\Query\SelectiveTransportExecutor;
-use React\Dns\Query\TcpTransportExecutor;
 use React\Dns\Query\TimeoutExecutor;
 use React\Dns\Query\UdpTransportExecutor;
 use React\EventLoop\LoopInterface;
@@ -25,7 +23,7 @@ final class Factory
      */
     public function create($nameserver, LoopInterface $loop)
     {
-        $executor = $this->decorateHostsFileExecutor($this->createExecutor($nameserver, $loop));
+        $executor = $this->decorateHostsFileExecutor($this->createRetryExecutor($nameserver, $loop));
 
         return new Resolver($executor);
     }
@@ -43,9 +41,7 @@ final class Factory
             $cache = new ArrayCache(256);
         }
 
-        $executor = $this->createExecutor($nameserver, $loop);
-        $executor = new CachingExecutor($executor, $cache);
-        $executor = $this->decorateHostsFileExecutor($executor);
+        $executor = $this->decorateHostsFileExecutor($this->createCachedExecutor($nameserver, $loop, $cache));
 
         return new Resolver($executor);
     }
@@ -82,42 +78,23 @@ final class Factory
 
     private function createExecutor($nameserver, LoopInterface $loop)
     {
-        $parts = \parse_url($nameserver);
-
-        if (isset($parts['scheme']) && $parts['scheme'] === 'tcp') {
-            $executor = $this->createTcpExecutor($nameserver, $loop);
-        } elseif (isset($parts['scheme']) && $parts['scheme'] === 'udp') {
-            $executor = $this->createUdpExecutor($nameserver, $loop);
-        } else {
-            $executor = new SelectiveTransportExecutor(
-                $this->createUdpExecutor($nameserver, $loop),
-                $this->createTcpExecutor($nameserver, $loop)
-            );
-        }
-
-        return new CoopExecutor($executor);
-    }
-
-    private function createTcpExecutor($nameserver, LoopInterface $loop)
-    {
         return new TimeoutExecutor(
-            new TcpTransportExecutor($nameserver, $loop),
+            new UdpTransportExecutor(
+                $nameserver,
+                $loop
+            ),
             5.0,
             $loop
         );
     }
 
-    private function createUdpExecutor($nameserver, LoopInterface $loop)
+    private function createRetryExecutor($namserver, LoopInterface $loop)
     {
-        return new RetryExecutor(
-            new TimeoutExecutor(
-                new UdpTransportExecutor(
-                    $nameserver,
-                    $loop
-                ),
-                5.0,
-                $loop
-            )
-        );
+        return new CoopExecutor(new RetryExecutor($this->createExecutor($namserver, $loop)));
+    }
+
+    private function createCachedExecutor($namserver, LoopInterface $loop, CacheInterface $cache)
+    {
+        return new CachingExecutor($this->createRetryExecutor($namserver, $loop), $cache);
     }
 }

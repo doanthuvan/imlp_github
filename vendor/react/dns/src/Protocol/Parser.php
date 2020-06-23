@@ -270,19 +270,7 @@ final class Parser
             return array(null, null);
         }
 
-        // use escaped notation for each label part, then join using dots
-        return array(
-            \implode(
-                '.',
-                \array_map(
-                    function ($label) {
-                        return \addcslashes($label, "\0..\40.\177");
-                    },
-                    $labels
-                )
-            ),
-            $consumed
-        );
+        return array(implode('.', $labels), $consumed);
     }
 
     private function readLabels($data, $consumed)

@@ -12,28 +12,22 @@ Allows you to subscribe to an event.
 
 Example:
 
-```php
-$emitter->on('user.created', function (User $user) use ($logger) {
-    $logger->log(sprintf("User '%s' was created.", $user->getLogin()));
-});
-```
+    $emitter->on('user.created', function (User $user) use ($logger) {
+        $logger->log(sprintf("User '%s' was created.", $user->getLogin()));
+    });
 
 Since the listener can be any callable, you could also use an instance method
 instead of the anonymous function:
 
-```php
-$loggerSubscriber = new LoggerSubscriber($logger);
-$emitter->on('user.created', array($loggerSubscriber, 'onUserCreated'));
-```
+    $loggerSubscriber = new LoggerSubscriber($logger);
+    $emitter->on('user.created', array($loggerSubscriber, 'onUserCreated'));
 
 This has the benefit that listener does not even need to know that the emitter
 exists.
 
 You can also accept more than one parameter for the listener:
 
-```php
-$emitter->on('numbers_added', function ($result, $a, $b) {});
-```
+    $emitter->on('numbers_added', function ($result, $a, $b) {});
 
 ## once($event, callable $listener)
 
@@ -42,11 +36,9 @@ once.
 
 Example:
 
-```php
-$conn->once('connected', function () use ($conn, $data) {
-    $conn->send($data);
-});
-```
+    $conn->once('connected', function () use ($conn, $data) {
+        $conn->send($data);
+    });
 
 ## emit($event, array $arguments = [])
 
@@ -54,17 +46,13 @@ Emit an event, which will call all listeners.
 
 Example:
 
-```php
-$conn->emit('data', [$data]);
-```
+    $conn->emit('data', array($data));
 
 The second argument to emit is an array of listener arguments. This is how you
 specify more args:
 
-```php
-$result = $a + $b;
-$emitter->emit('numbers_added', [$result, $a, $b]);
-```
+    $result = $a + $b;
+    $emitter->emit('numbers_added', array($result, $a, $b));
 
 ## listeners($event)
 
@@ -73,12 +61,10 @@ to check if there are any listeners at all.
 
 Example:
 
-```php
-$e = new \RuntimeException('Everything is broken!');
-if (0 === count($emitter->listeners('error'))) {
-    throw $e;
-}
-```
+    $e = new \RuntimeException('Everything is broken!');
+    if (0 === count($emitter->listeners('error'))) {
+        throw $e;
+    }
 
 ## removeListener($event, callable $listener)
 
@@ -86,6 +72,6 @@ Remove a specific listener for a specific event.
 
 ## removeAllListeners($event = null)
 
-Remove all listeners for a specific event or all listeners all together. This
+Remove all listeners for a specific event or all listeners alltogether. This
 is useful for long-running processes, where you want to remove listeners in
 order to allow them to get garbage collected.
