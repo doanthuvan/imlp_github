@@ -1,0 +1,17 @@
+{
+    "name": "cuongnq/github_project",
+    "authors": [
+        {
+            "name": "cuongnq",
+            "email": "cuongng1296@gmail.com"
+        }
+    ],
+    "require": {
+        "cboden/ratchet": "^0.4.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "MyApp\\": "src"
+        }
+    }
+}
