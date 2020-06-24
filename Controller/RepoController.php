@@ -22,15 +22,15 @@ class RepoController
         if($_GET['page'] == 'reposSave') {
             if(isset($_POST['action'])) {
                 $idUser = $_SESSION['idUser'];
-                $entryData = array(
+                $entryData = json_encode(array(
                     'idRepo' => $_POST['idRepo'],
                     'nameRepo' =>  $_POST['nameRepo'],
-                    'owner' => $_POST['owner']
-                );
-                $context    = new ZMQContext();
-                $socket     = $context->getSocket(ZMQ::SOCKET_PUSH,'my pusher');
-                $socket->connect('tcp://localhost:4545');
-                $socket->send(json_encode($entryData));
+                    'owner' => $_POST['owner'],
+                    'idUser' => $_SESSION['idUser'],
+                    'nameUser' => $_SESSION['nameUser'],
+                    'access_token' => $_SESSION['access_token']
+                ));
+                shell_exec("php Notification/push.php ".$entryData);
                 exit;
             }
             else {

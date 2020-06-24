@@ -35,18 +35,14 @@ class Pusher implements WampServerInterface {
      * @param string JSON'ified string we'll receive from ZeroMQ
      */
     public function onPull($entry) {
-        $entryData = json_decode($entry, true);
-
-        // If the lookup topic object isn't set there is no one to publish to
         if (!array_key_exists('fork', $this->subscribedTopics)) {
             return;
         }
-
-        $repo = new Repo();
-        $url = $repo->fork($entryData['idRepo'],$entryData['nameRepo'], $entryData['owner']);
         $topic = $this->subscribedTopics['fork'];
 
-        // re-send the data to all the clients subscribed to that category
+        $repo = new Repo();
+        $url = $repo->fork($entry);
+
         $topic->broadcast($url);
     }
 }

@@ -1,6 +1,7 @@
 <?php
 namespace Model;
 include_once('BaseModel.php');
+include_once('env.php');
 
 class Repo extends BaseModel
 {
@@ -43,16 +44,27 @@ class Repo extends BaseModel
         ];
     }
 
-    public function fork($idRepo, $nameRepo, $owner)
+    public function fork($entry)
     {
-        $idUser = $_SESSION['idUser'];
-        $sql = "SELECT * FROM forks where idRepo = $idRepo and idUser = $idUser";
+        $entry = str_replace('{', '', $entry);
+        $entry = str_replace('}', '', $entry);
+        $entry = explode(",", $entry);
+        $data = [];
+        for($i = 0;$i< count($entry); $i++) {
+            $item = explode(":", $entry[$i]);
+            $data[$item[0]] = $item[1];
+        }
+        $this->conn = mysqli_connect(ServerName, UserName, Password, DB);
+        $idUser = $data['idUser'];
+
+        $sql = "SELECT * FROM forks where idRepo = $data[idRepo] and idUser = $idUser";
+
         $row_count = mysqli_num_rows(mysqli_query($this->conn, $sql));
-        if($row_count > 0) return false;
+        if($row_count > 0) return;
         $curl = curl_init();
         $options =array(
             CURLOPT_RETURNTRANSFER => 1,
-            CURLOPT_URL => "https://api.github.com/repos/$owner/$nameRepo/forks?access_token=". $_SESSION['access_token'],
+            CURLOPT_URL => "https://api.github.com/repos/$data[owner]/$data[nameRepo]/forks?access_token=". $data['access_token'],
             CURLOPT_POST => true
         );
         curl_setopt_array($curl, $options);
@@ -64,13 +76,14 @@ class Repo extends BaseModel
         );
         $result = curl_exec($curl);
         if($result) {
-            $forkUrl = "https://github.com/$_SESSION[nameUser]/$nameRepo";
-            $sql = "INSERT INTO forks values ($idUser, $idRepo, '$forkUrl')";
+            $forkUrl = "https://github.com/$data[nameUser]/$data[nameRepo]";
+            $sql = "INSERT INTO forks values ($idUser,  $data[idRepo], '$forkUrl')";
             if(mysqli_query($this->conn, $sql)) {
+                \sleep(2);
                 return $forkUrl;
             }
-            return false;
+            return;
         }
-        return false;
+        return;
     }
 }
